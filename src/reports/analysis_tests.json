@@ -1,0 +1,86 @@
+{
+  "track_vs_grad": {
+    "chi2": 0.8704921813717931,
+    "p": 0.35081908807771744,
+    "dof": 1,
+    "cramers_v": 0.08700285759283967,
+    "table": "graduation_status  False  True \ntrack_name                     \nData analysis         36     17\nData science          48     14"
+  },
+  "gender_vs_grad": {
+    "chi2": 2.1051823507180654,
+    "p": 0.1468008420560172,
+    "dof": 1,
+    "cramers_v": 0.13529942159708191,
+    "table": "graduation_status  False  True \ngender                         \nfemale                29     16\nmale                  55     15"
+  },
+  "total_score": {
+    "t_stat": -0.49833836009557547,
+    "p": 0.620265313435734,
+    "cohen_d": -0.10420501779697067,
+    "mannwhitney": {
+      "u": 1204,
+      "p": 0.5407971594765046,
+      "r": -0.05730556964503124
+    },
+    "n_grad": 31,
+    "n_nongrad": 84
+  },
+  "hours_per_week": {
+    "t_stat": 0.45641830756878776,
+    "p": 0.6501601557818768,
+    "cohen_d": 0.1023552729493478,
+    "mannwhitney": {
+      "u": 1401,
+      "p": 0.4845307149656848,
+      "r": 0.058481068509544695
+    },
+    "n_grad": 31,
+    "n_nongrad": 84
+  },
+  "spearman_corr": {
+    "total_score": {
+      "total_score": 1.0,
+      "hours_per_week": -0.009393546879858907,
+      "years_experience": 0.19579558852380266,
+      "skill_level": 0.20169207384108903
+    },
+    "hours_per_week": {
+      "total_score": -0.009393546879858907,
+      "hours_per_week": 1.0,
+      "years_experience": 0.2553767768493813,
+      "skill_level": 0.2658151398816267
+    },
+    "years_experience": {
+      "total_score": 0.19579558852380266,
+      "hours_per_week": 0.2553767768493813,
+      "years_experience": 1.0,
+      "skill_level": 0.9293253819723005
+    },
+    "skill_level": {
+      "total_score": 0.20169207384108903,
+      "hours_per_week": 0.2658151398816267,
+      "years_experience": 0.9293253819723005,
+      "skill_level": 1.0
+    }
+  },
+  "multiple_testing": {
+    "pvals_raw": [
+      0.620265313435734,
+      0.6501601557818768,
+      0.35081908807771744,
+      0.1468008420560172
+    ],
+    "pvals_adj": [
+      0.6501601557818768,
+      0.6501601557818768,
+      0.6501601557818768,
+      0.5872033682240688
+    ],
+    "reject": [
+      false,
+      false,
+      false,
+      false
+    ]
+  }
+}
