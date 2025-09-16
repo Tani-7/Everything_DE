@@ -11,9 +11,11 @@ env/
 
 # data files
 data/
+private_files/
 *.db
 *.sqlite
 mentorship.db
+
 
 # IDEs
 .vscode/
