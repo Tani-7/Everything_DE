@@ -1,4 +1,3 @@
-# test_etl.py
 import pytest
 from etl import parse_age_range, parse_numeric_years, parse_hours_per_week, skill_to_numeric, yes_no_to_bool
 
@@ -24,4 +23,3 @@ def test_yes_no_bool():
     assert yes_no_to_bool("yes") is True
     assert yes_no_to_bool("No") is False
     assert yes_no_to_bool("") is None
-

@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-DB_URI = os.getenv("DB_URI")  # <-- define it
+DB_URI = os.getenv("DB_URI") 
 if not DB_URI:
     raise RuntimeError("DB_URI not set. Did you create your .env?")
 
@@ -59,11 +59,11 @@ def normalize_dataframe(df, cohort_label, sheet_name):
     df["aptitude_test_status"] = df["aptitude_test_status"].map(yes_no_to_bool)
     df["graduation_status"] = df["graduation_status"].map(yes_no_to_bool)
 
-    # add cohort + sheet label
+    # cohort + sheet label
     df["cohort"] = cohort_label
     df["sheet"] = sheet_name
 
-    # add raw row as JSON (use original values, not converted, if you prefer)
+    # raw row as JSON (use original values, not converted, if you prefer)
     df["raw_row"] = df.apply(lambda r: json.dumps(r.to_dict(), default=str), axis=1)
 
     return df
@@ -86,11 +86,11 @@ def load_gsheet(sheet_url, cohort_label):
         df = df.loc[:, ~df.columns.duplicated()].copy()
         df.columns = df.columns.str.strip().str.lower()
 
-        ### ⬇️ NOW insert each sheet separately
+        ### inserting each sheet separately
         df.to_sql(
             "staging_participants",
             engine,
-            if_exists="append",   # append rows for each sheet
+            if_exists="append",
             index=False,
             method="multi",
             dtype=None
