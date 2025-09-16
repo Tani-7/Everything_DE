@@ -1,0 +1,32 @@
+code # python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# virtual env
+.venv/
+venv/
+env/
+
+# data files
+data/
+*.db
+*.sqlite
+mentorship.db
+
+# IDEs
+.vscode/
+.idea/
+
+# system
+.DS_Store
+Thumbs.db
+
+# env / secrets
+.env
+.env.* 
+secrets.json
+
+# logs
+*.log
