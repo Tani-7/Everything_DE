@@ -1,0 +1,21 @@
+feature,importance
+num__total_score,0.260087799684459
+num__hours_per_week,0.1223336233054979
+num__years_experience,0.09848875709074024
+cat__gender_male,0.058524969773623356
+num__skill_level,0.05342003153875361
+cat__track_name_Data science,0.050370734282886055
+cat__heard_about_WhatsApp,0.04767964101076896
+cat__heard_about_Twitter,0.04685200712901219
+cat__gender_female,0.04670253249501905
+cat__track_name_Data analysis,0.043846334802128614
+cat__age_range_25-34 years,0.04178791722611062
+cat__age_range_18-24 years,0.03088821864111605
+cat__heard_about_LinkedIn,0.024453478649381723
+cat__heard_about_through a geeks for geeks webinar,0.02424776579566066
+cat__heard_about_Word of mouth,0.023264938318535988
+cat__age_range_35-44 years,0.015506817127548322
+cat__heard_about_Instagram,0.005234022874697115
+cat__heard_about_Friend,0.004648226276016138
+cat__age_range_45-54 years,0.0016621839780445549
+cat__country_name_kenya,0.0

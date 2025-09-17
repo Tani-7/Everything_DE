@@ -3,8 +3,7 @@ from pathlib import Path
 import joblib
 import numpy as np
 import pandas as pd
-
-from sklearn.model_selection import train_test_split, GridSearchCV
+from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from sklearn.impute import SimpleImputer
 from sklearn.compose import ColumnTransformer
@@ -15,13 +14,16 @@ from sklearn.metrics import (
     f1_score, brier_score_loss, confusion_matrix
 )
 
+# Logging config
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
+# Directory for saving trained models
 MODEL_DIR = Path("models")
 MODEL_DIR.mkdir(exist_ok=True, parents=True)
 
 
 def _build_preprocessor(num_features, cat_features):
+    """Build preprocessing pipeline for numerical & categorical features."""
     num_transformer = Pipeline([
         ("imputer", SimpleImputer(strategy="median")),
         ("scaler", StandardScaler())
@@ -37,11 +39,13 @@ def _build_preprocessor(num_features, cat_features):
 
 
 def build_pipeline(model, num_features, cat_features):
+    """Combine preprocessing and model into one pipeline."""
     preprocessor = _build_preprocessor(num_features, cat_features)
     return Pipeline([("pre", preprocessor), ("clf", model)])
 
 
 def evaluate(model, X_test, y_test):
+    """Evaluate model performance on test set."""
     preds = model.predict(X_test)
     probs = model.predict_proba(X_test)[:, 1]
     return {
@@ -55,38 +59,56 @@ def evaluate(model, X_test, y_test):
     }
 
 
-def run_logistic_regression(df, num_features=None, cat_features=None, test_size=0.2,
-                            random_state=42, load_saved=True, saved_model_path=MODEL_DIR / "logreg.pkl"):
+def run_logistic_regression(
+    df,
+    num_features=None,
+    cat_features=None,
+    test_size=0.2,
+    random_state=42,
+    load_saved=True,
+    saved_model_path=MODEL_DIR / "logreg.pkl"
+):
+    """Train or load a logistic regression pipeline for graduation prediction."""
     if num_features is None:
         num_features = ["total_score", "hours_per_week", "years_experience", "skill_level"]
     if cat_features is None:
         cat_features = ["track_name", "country_name", "gender", "age_range", "heard_about"]
 
+    # Keep only available features
     features = [f for f in (num_features + cat_features) if f in df.columns]
     X = df[features].copy()
     y = df["graduation_status"].astype(int).copy()
 
+    # Train/test split
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=test_size, random_state=random_state,
         stratify=y if y.nunique() > 1 else None
     )
 
+    # Try loading a saved model
     if load_saved and saved_model_path.exists():
         try:
             model = joblib.load(saved_model_path)
-            logging.info("Loaded saved logistic model from %s", saved_model_path)
+            logging.info("Loaded saved logistic regression model from %s", saved_model_path)
             return X, y, model, X_train, X_test, y_train, y_test
         except Exception as e:
-            logging.warning("Failed to load saved model (%s): %s — training a fresh one", saved_model_path, e)
+            logging.warning("Failed to load saved model (%s): %s — retraining instead", saved_model_path, e)
 
-    pipe = build_pipeline(LogisticRegression(max_iter=500, solver="liblinear"),
-                          num_features=[c for c in num_features if c in df.columns],
-                          cat_features=[c for c in cat_features if c in df.columns])
+    # Train fresh model
+    pipe = build_pipeline(
+        LogisticRegression(max_iter=500, solver="liblinear"),
+        num_features=[c for c in num_features if c in df.columns],
+        cat_features=[c for c in cat_features if c in df.columns]
+    )
     pipe.fit(X_train, y_train)
+
+    # Save trained model
     joblib.dump(pipe, saved_model_path)
-    logging.info("Saved logistic model to %s", saved_model_path)
+    logging.info("Trained and saved logistic regression model to %s", saved_model_path)
+
     return X, y, pipe, X_train, X_test, y_train, y_test
 
 
 def evaluate_model(model, X_test, y_test):
+    """Wrapper for model evaluation."""
     return evaluate(model, X_test, y_test)

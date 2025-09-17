@@ -12,6 +12,7 @@ import logging
 import hashlib
 from datetime import datetime, timezone
 from typing import Tuple, Dict, Any
+import re
 
 import pandas as pd
 import numpy as np
@@ -78,7 +79,6 @@ def parse_age_range(age):
     if pd.isna(age) or age is None:
         return (None, None, None)
     a = str(age).strip().lower()
-    import re
     if '-' in a:
         parts = re.findall(r'(\d+)', a)
         if len(parts) >= 2:
@@ -98,7 +98,6 @@ def parse_numeric_years(s):
     if pd.isna(s) or s is None:
         return None
     s = str(s).strip().lower()
-    import re
     m = re.search(r'(\d+(\.\d+)?)', s)
     if m:
         return float(m.group(1))
@@ -111,7 +110,6 @@ def parse_hours_per_week(s):
     if pd.isna(s) or s is None:
         return None
     s = str(s).strip().lower()
-    import re
     nums = re.findall(r'(\d+(\.\d+)?)', s)
     if len(nums) == 1:
         return float(nums[0][0])

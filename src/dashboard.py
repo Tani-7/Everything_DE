@@ -1,8 +1,8 @@
 import streamlit as st
 import pandas as pd
-from data_utils import load_and_clean_data
-from stats_models import run_logistic_regression, evaluate_model
-from stats_inf import run_hypothesis_tests
+from src.data_utils import get_engine, load_participants
+from src.stats_models import run_logistic_regression
+from src.stats_inf import run_hypothesis_tests
 import stats_viz as viz
 from pathlib import Path
 

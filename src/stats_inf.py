@@ -13,7 +13,7 @@ import pandas as pd
 from scipy import stats
 from statsmodels.stats.multitest import multipletests
 from pathlib import Path
-from data_utils import load_participants
+from src.data_utils import load_participants
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
