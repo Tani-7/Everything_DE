@@ -1,0 +1,4 @@
+{
+  "log_reg": "logreg.pkl",
+  "random_forest": "rf_model.pkl"
+}

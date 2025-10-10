@@ -1,5 +1,5 @@
 import pytest
-from etl import parse_age_range, parse_numeric_years, parse_hours_per_week, skill_to_numeric, yes_no_to_bool
+from src.etl import parse_age_range, parse_numeric_years, parse_hours_per_week, skill_to_numeric, yes_no_to_bool
 
 def test_parse_age_range_dash():
     assert parse_age_range("25-34") == ("25-34", 25, 34)

@@ -1,52 +1,66 @@
-import os
-import logging
+# src/data_utils.py
+from pathlib import Path
 import pandas as pd
-from sqlalchemy import create_engine
-from dotenv import load_dotenv
+from sqlalchemy import create_engine, text
+from src.config import settings
 
-# Setup logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
-
-# Load environment variables
-load_dotenv()
-DB_URI = os.getenv("DB_URI")
+_engine = None
 
 
 def get_engine():
-    """Create a SQLAlchemy engine from DB_URI in .env"""
-    if not DB_URI:
-        raise ValueError("DB_URI not set in .env")
-    return create_engine(DB_URI)
+    global _engine
+    if _engine is None:
+        _engine = create_engine(settings.db_url, future=True)
+    return _engine
 
 
-def load_participants() -> pd.DataFrame:
+def load_clean_data(limit: int | None = None) -> pd.DataFrame:
     """
-    Load cleaned participants joined with track and country info.
-    Returns: DataFrame with participants + track + country
+    Load participants joined with lookups and graduation_outcomes.
+    It will prefer values from graduation_outcomes if present and fallback to participants.
     """
     engine = get_engine()
-    query = """
-    SELECT p.*, t.track_name, c.country_name
+    sql = """
+    SELECT
+      p.id as participant_id,
+      p.id_no,
+      p.timestamp,
+      p.age_range,
+      p.gender,
+      c.country_name,
+      t.track_name,
+      -- prefer explicit values in graduation_outcomes if available, else participants' fields
+      COALESCE(g.total_score, p.total_score) as total_score,
+      COALESCE(g.graduation_status, p.graduation_status) as graduation_status,
+      p.years_experience,
+      p.hours_per_week,
+      p.skill_level,
+      p.heard_about,
+      p.cohort,
+      p.sheet
     FROM participants p
-    LEFT JOIN tracks t ON p.track_id = t.id
     LEFT JOIN countries c ON p.country_id = c.id
+    LEFT JOIN tracks t ON p.track_id = t.id
+    LEFT JOIN graduation_outcomes g ON g.participant_id = p.id
+    ORDER BY p.id
     """
-    logging.info("Connecting to DB and loading participants data...")
-    df = pd.read_sql(query, engine)
-    logging.info("Loaded %d rows", len(df))
+    if limit:
+        sql += f" LIMIT {int(limit)}"
 
-    # Ensure graduation_status is boolean
+    with engine.connect() as conn:
+        df = pd.read_sql(text(sql), conn)
+
+    # Normalize types
+    if "total_score" in df.columns:
+        df["total_score"] = pd.to_numeric(df["total_score"], errors="coerce")
+    for col in ["years_experience", "hours_per_week", "skill_level"]:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors="coerce")
+
     if "graduation_status" in df.columns:
-        df["graduation_status"] = df["graduation_status"].astype(bool)
+        # ensure boolean (None/NaN stays NaN)
+        df["graduation_status"] = df["graduation_status"].apply(
+            lambda v: bool(v) if pd.notna(v) else None
+        )
 
     return df
-
-
-def load_and_clean_data() -> pd.DataFrame:
-    """Alias for load_participants (kept for compatibility)."""
-    return load_participants()
-
-
-if __name__ == "__main__":
-    df = load_and_clean_data()
-    print(df.head())

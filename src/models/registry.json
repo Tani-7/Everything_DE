@@ -1,0 +1,5 @@
+{
+  "logreg": "logreg.pkl",
+  "rf": "rf.pkl",
+  "gb": "gb.pkl"
+}

@@ -1,103 +1,141 @@
-import logging
-from typing import Dict, Any, Optional
-from pathlib import Path
-
+"""
+FastAPI application. All responses are JSON-serializable via utils.to_json_serializable
+Run: uvicorn src.api:app --reload
+"""
+from fastapi import FastAPI, HTTPException, Query
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+from typing import List
 import pandas as pd
-import joblib
-from fastapi import FastAPI, Query, HTTPException
-from fastapi.encoders import jsonable_encoder
-from pydantic import BaseModel, Field
 
-from src.data_utils import get_engine, load_participants
-from src.stats_models import run_logistic_regression
-from src.stats_inf import run_hypothesis_tests
+from src.config import settings
+from src.utils import to_json_serializable
+import src.stats_viz as stats_viz
+import src.stats_inf as stats_inf
+from models.registry import get_registry, load_model
+from src.data_utils import load_clean_data
 
-logger = logging.getLogger(__name__)
-app = FastAPI(title="Graduation Insights API")
+app = FastAPI(title="Graduation Prediction API")
 
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
-# Paths for saved models
+class Participant(BaseModel):
+    total_score: float
+    hours_per_week: float
+    years_experience: float
+    skill_level: float
+    track_name: str
+    country_name: str
+    gender: str
+    age_range: str
+    heard_about: str
 
-MODEL_RF = Path("models") / "rf.pkl"
-MODEL_LR = Path("models") / "logreg.pkl"
-
-
-# Pydantic Models
-
-class PredictRequest(BaseModel):
-    total_score: Optional[float] = Field(None, example=70.0)
-    hours_per_week: Optional[float] = Field(None, example=10.0)
-    years_experience: Optional[float] = Field(None, example=1.0)
-    skill_level: Optional[float] = Field(None, example=5.0)
-    track_name: Optional[str] = Field(None, example="Data analysis")
-    country_name: Optional[str] = Field(None, example="Kenya")
-    gender: Optional[str] = Field(None, example="Male")
-    age_range: Optional[str] = Field(None, example="25-34 years")
-    heard_about: Optional[str] = Field(None, example="WhatsApp")
-
-class PredictResponse(BaseModel):
-    model: str
-    probability: float
-    details: Optional[Dict[str, Any]] = None
-
-# Helper Methods
-
-def _load_best_model():
-    if MODEL_RF.exists():
-        return "rf", joblib.load(MODEL_RF)
-    if MODEL_LR.exists():
-        return "logreg", joblib.load(MODEL_LR)
-    return None, None
-
-def _df_to_jsonable(df: pd.DataFrame):
-    return jsonable_encoder(df.to_dict(orient="records"))
-
-# Defining Endpoints
-
-@app.get("/health")
-def health():
-    return {"status": "ok"}
-
-@app.get("/participants")
-def participants(limit: int = Query(100, ge=1, le=1000),
-                 offset: int = Query(0, ge=0)):
-    try:
-        df = load_participants()
-    except Exception as e:
-        logger.error("Failed loading participants: %s", e)
-        raise HTTPException(status_code=500, detail="DB query failed")
-
-    df = df.iloc[offset: offset+limit]
-    return {"rows": _df_to_jsonable(df), "count": len(df)}
-
-@app.get("/stats/graduation-by-track")
-def graduation_by_track():
-    df = load_participants()
-    grouped = (df.groupby("track_name")
-                 .agg(total=("id", "count"),
-                      graduates=("graduation_status", "sum"))
-                 .reset_index())
-    grouped["graduation_rate"] = (grouped["graduates"] / grouped["total"]).round(4)
-    return {"data": _df_to_jsonable(grouped)}
-
-@app.post("/predict", response_model=PredictResponse)
-def predict(payload: PredictRequest):
-    model_name, model = _load_best_model()
-    if model is None:
-        raise HTTPException(status_code=503, detail="No trained model found.")
-
-    row = {k: v for k, v in payload.dict().items()}
-    df = pd.DataFrame([row])
-
-    try:
-        probs = model.predict_proba(df)[:, 1]
-        prob = float(probs[0])
-    except Exception as e:
-        logger.error("Prediction failed: %s", e)
-        raise HTTPException(status_code=500, detail="Prediction failed")
 @app.get("/")
 def root():
-    return {"message": "Graduation Insights API is running. All systems GO"}
+    return {"message": "Graduation Prediction API is running. See /docs"}
 
+@app.get("/models")
+def list_models():
+    return {"available_models": list(get_registry().keys())}
 
-    return PredictResponse(model=model_name, probability=prob, details={"input": row})
+@app.post("/models/train")
+def train_models(retrain: bool = Query(True)):
+    df = load_clean_data()
+    if df.empty:
+        raise HTTPException(status_code=400, detail="No data to train on - run ETL first.")
+    # import models module here to avoid top-level heavy imports
+    from models.stats_models import train_all
+    registry, metrics = train_all(df, overwrite=retrain)
+    return to_json_serializable({"registry": registry, "metrics": metrics})
+
+@app.post("/predict/{model_name}")
+def predict_single(model_name: str, record: Participant):
+    reg = get_registry()
+    if model_name not in reg:
+        raise HTTPException(status_code=404, detail="Model not found")
+    model = load_model(model_name)
+    X = pd.DataFrame([record.dict()])
+    try:
+        pred = bool(int(model.predict(X)[0]))
+        prob = None
+        if hasattr(model, "predict_proba"):
+            try:
+                prob = float(model.predict_proba(X)[0, 1])
+            except Exception:
+                prob = None
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    return to_json_serializable({"model": model_name, "prediction": pred, "probability": prob})
+
+@app.post("/predict-batch/{model_name}")
+def predict_batch(model_name: str, records: List[Participant]):
+    reg = get_registry()
+    if model_name not in reg:
+        raise HTTPException(status_code=404, detail="Model not found")
+    model = load_model(model_name)
+    X = pd.DataFrame([r.dict() for r in records])
+    try:
+        preds = [bool(int(x)) for x in model.predict(X).tolist()]
+        probs = None
+        if hasattr(model, "predict_proba"):
+            try:
+                probs = model.predict_proba(X)[:, 1].tolist()
+            except Exception:
+                probs = [None] * len(preds)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    return to_json_serializable({"model": model_name, "predictions": preds, "probabilities": probs})
+
+@app.get("/sample-data")
+def sample_data(limit: int = 20):
+    df = load_clean_data(limit=limit)
+    if df.empty:
+        return []
+    return to_json_serializable(df.head(limit))
+
+@app.get("/eda/summary")
+def eda_summary():
+    df = load_clean_data()
+    if df.empty:
+        return {"error": "no data"}
+    return stats_inf.get_summary(df)
+
+@app.get("/eda/null_counts")
+def eda_null_counts():
+    df = load_clean_data()
+    if df.empty:
+        return {"error": "no data"}
+    return stats_inf.get_null_counts(df)
+
+@app.get("/viz/{viz_type}")
+def viz_data(viz_type: str, bins: int = 30, sample: int = 1000, model: str | None = None):
+    df = load_clean_data()
+    if df.empty:
+        raise HTTPException(status_code=404, detail="no data")
+    if viz_type == "distribution":
+        return stats_viz.get_score_distribution_data(df, bins=bins)
+    if viz_type == "graduation_by_track":
+        return stats_viz.get_graduation_by_track_data(df)
+    if viz_type == "graduation_by_country":
+        return stats_viz.get_graduation_by_country_data(df)
+    if viz_type == "graduation_by_gender":
+        return stats_viz.get_graduation_by_gender_data(df)
+    if viz_type == "score_by_track":
+        return stats_viz.get_score_by_track_data(df)
+    if viz_type == "experience_vs_score":
+        return stats_viz.get_experience_vs_score_data(df, sample=sample)
+    if viz_type == "correlations":
+        return stats_viz.get_correlation_data(df)
+    if viz_type == "feature_importance":
+        if not model:
+            raise HTTPException(status_code=400, detail="model parameter required")
+        mdl = load_model(model)
+        feat_names = []
+        try:
+            # attempt to infer feature names
+            from models.stats_models import _extract_feature_names
+            feat_names = _extract_feature_names(mdl.named_steps["pre"], df.head(20))
+        except Exception:
+            feat_names = []
+        return stats_viz.get_feature_importance_data(mdl, feat_names)
+    raise HTTPException(status_code=400, detail="Unknown visualization type")
