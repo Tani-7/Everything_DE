@@ -1,7 +1,3 @@
-"""
-Streamlit dashboard. Always pulls visualization/data from the API.
-Run: streamlit run src/dashboard.py
-"""
 import streamlit as st
 import pandas as pd
 import requests

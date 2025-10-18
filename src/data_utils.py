@@ -10,15 +10,12 @@ _engine = None
 def get_engine():
     global _engine
     if _engine is None:
-        _engine = create_engine(settings.db_url, future=True)
+        _engine = create_engine(settings.db_uri, future=True)
     return _engine
 
 
 def load_clean_data(limit: int | None = None) -> pd.DataFrame:
-    """
-    Load participants joined with lookups and graduation_outcomes.
-    It will prefer values from graduation_outcomes if present and fallback to participants.
-    """
+    
     engine = get_engine()
     sql = """
     SELECT

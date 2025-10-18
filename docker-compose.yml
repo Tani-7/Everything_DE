@@ -1,33 +1,62 @@
 version: "3.9"
 
 services:
-  app:
+  db:
+    image: postgres:15
+    container_name: everything_db
+    env_file: .env
+    ports:
+      - "55432:5432"            # host port 55432 to avoid host conflicts
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB} -h localhost || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - everything_net
+
+  api:
     build:
       context: .
-      dockerfile: Dockerfile
-    env_file:
-      - .env
+      dockerfile: Dockerfile.api
+    container_name: everything_api
+    env_file: .env
     ports:
-      - "8501:8501"
+      - "8001:8000"           # host 8001 -> container 8000
     volumes:
       - ./src:/app/src
       - ./models:/app/models
     depends_on:
       - db
-    command: python -m streamlit run src/dashboard.py --server.port=8501 --server.address=0.0.0.0
+    restart: unless-stopped
+    networks:
+      - everything_net
 
-
-  db:
-    image: postgres:16
-    restart: always
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
+  dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile.dashboard
+    container_name: everything_dashboard
+    env_file: .env
     ports:
-      - "5432:5432"
+      - "8502:8501"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
-
+      - ./src:/app/src
+      - ./models:/app/models
+    depends_on:
+      - api
+    restart: unless-stopped
+    networks:
+      - everything_net
+    environment:
+      - API_URL=http://everything_api:8000 
+      
 volumes:
-  postgres_data:
+  pg_data:
+
+networks:
+  everything_net:
+    driver: bridge

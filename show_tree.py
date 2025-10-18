@@ -9,7 +9,7 @@ def print_tree(root: Path, prefix: str = ""):
         else:
             print(prefix + "    " + path.name)
 
-folders_to_show = ["src", "models"]
+folders_to_show = ["src", "models", "reports", "src/models"]
 
 for folder in folders_to_show:
     path = Path(folder)

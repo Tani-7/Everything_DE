@@ -1,16 +1,8 @@
-"""
-src/stats_inf.py
-EDA and inference helpers (return JSON-serializable dicts/lists).
-"""
 import pandas as pd
 import numpy as np
 from src.utils import to_json_serializable
 
 def get_summary(df: pd.DataFrame) -> dict:
-    """
-    Returns descriptive statistics for the given dataframe,
-    replacing NaN and infinite values with 'n/a' for JSON safety.
-    """
     try:
         desc = (
             df.describe(include="all")

@@ -1,23 +1,25 @@
-# src/config.py
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from functools import lru_cache
 
 class Settings(BaseSettings):
     # main connection details
     postgres_user: str = "postgres"
-    postgres_password: str = "Tani-7"
+    postgres_password: str = "M005e"
     postgres_db: str = "everything_de"
-    postgres_host: str = "localhost"
+    postgres_host: str = "db"
     postgres_port: int = 5432
 
     # custom vars
     db_uri: str | None = None
     model_dir: str = "src/models"
 
+    # pydantic v2 config
     model_config = SettingsConfigDict(
-        env_file=".env",
-        env_file_encoding="utf-8",
-        extra="ignore"  # ignore unrelated vars like other app envs
+        env_prefix='',
+        env_file='.env',
+        env_file_encoding='utf-8',
+        extra='ignore',
+        populate_by_name=True
     )
 
     @property
